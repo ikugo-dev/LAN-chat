@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -11,21 +10,15 @@ import (
 )
 
 type Message struct {
-	Type    string `json:"type"`    // e.g., "chat", "vote", "file"
-	Payload string `json:"payload"` // the actual message content
+	Type     string            `json:"type"`     // e.g., "chat", "vote", "file"
+	Payload  json.RawMessage   `json:"payload"`  // the actual message content
+	Metadata map[string]string `json:"metadata"` // Extra info (e.g., filename)
 }
 
 const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
+	writeWait      = 10 * time.Second
+	pongWait       = 60 * time.Second
+	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 512
 )
 
@@ -41,15 +34,13 @@ var upgrader = websocket.Upgrader{
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub *Hub
-
-	// The websocket connection.
+	hub  *Hub
 	conn *websocket.Conn
-
 	// Buffered channel of outbound messages.
 	send chan []byte
 }
 
+// hub -> websocket
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -91,6 +82,7 @@ func (c *Client) writePump() {
 	}
 }
 
+// websocket -> hub
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
@@ -100,37 +92,39 @@ func (c *Client) readPump() {
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, message, err := c.conn.ReadMessage()
+		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
+			log.Printf("WebSocket read error: %v", err)
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-
-		// Parse the message into a structured format
-		var msg Message
-		if err := json.Unmarshal(message, &msg); err != nil {
-			log.Printf("error parsing message: %v", err)
-			continue
+		if messageType == websocket.BinaryMessage {
+			log.Println("Received a binary message")
 		}
 
-		// Handle the message based on its type
+		log.Printf("Received raw message: %s", message) // Debug raw bytes before parsing
+
+		var msg Message
+		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Printf("Error parsing message: %v", err)
+			continue
+		}
+		log.Printf("Received text: %+v", msg)
+
 		switch msg.Type {
 		case "chat":
-			c.hub.broadcast <- message
+			handleTextMessage(msg, c)
 		case "vote":
-			// Handle voting logic
+			handleVoteMessage(msg, c)
 		case "file":
-			// Handle file sharing logic
+			handleFileMessage(msg, c)
+		case "bin":
+			handleBinaryFileMessage(message, c)
 		default:
 			log.Printf("unknown message type: %s", msg.Type)
 		}
 	}
 }
 
-// serveWs handles websocket requests from the peer.
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -140,8 +134,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 
-	// Allow collection of memory referenced by the caller by doing all work in
-	// new goroutines.
+	// Allow collection of memory referenced by the caller
 	go client.writePump()
 	go client.readPump()
 }

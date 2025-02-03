@@ -17,26 +17,47 @@
             }
 
             // Handle form submission
-            document.getElementById("form").onsubmit = function () {
+            document.getElementById("form").onsubmit = function (event) {
+                event.preventDefault();
+                
                 if (!conn) {
-                    return false;
+                    return;
                 }
-                if (!msg.value) {
-                    return false;
+            
+                let messageType = "chat"; // Default
+                let payload = msg.value;
+                let metadata = {};
+            
+                let fileInput = document.getElementById("fileInput");
+                if (fileInput.files.length > 0) {
+                    let file = fileInput.files[0];
+                    let reader = new FileReader();
+            
+                    reader.onload = function (e) {
+                        messageType = "file";
+                        payload = e.target.result;
+                        metadata = { filename: file.name };
+            
+                        let message = {
+                            type: messageType,
+                            payload: btoa(payload), // Convert to base64
+                            metadata: metadata
+                        };
+            
+                        conn.send(JSON.stringify(message));
+                    };
+            
+                    reader.readAsBinaryString(file);
+                } else {
+                    let message = {
+                        type: messageType,
+                        payload: payload
+                    };
+                    conn.send(JSON.stringify(message));
                 }
-
-                // Create a structured message
-                var message = {
-                    type: "chat", // Default to "chat"; you can change this dynamically
-                    payload: msg.value
-                };
-
-                // Send the message as JSON
-                conn.send(JSON.stringify(message));
+                
                 msg.value = "";
-                return false;
             };
-
             // Initialize WebSocket connection
             if (window["WebSocket"]) {
                 conn = new WebSocket("ws://" + document.location.host + "/ws/chat"); // Connect to chat by default
@@ -64,7 +85,7 @@
                             item.innerText = "File: " + msg.payload;
                             break;
                         default:
-                            item.innerText = "Unknown message type: " + msg.payload;
+                            item.innerText = "Unknown message type: " + msg;
                     }
 
                     appendLog(item);
@@ -116,8 +137,9 @@
 <body>
     <div id="log"></div>
     <form id="form">
+        <input type="text" id="msg" size="64" autofocus placeholder="Type a message..." />
+        <input type="file" id="fileInput" />
         <input type="submit" value="Send" />
-        <input type="text" id="msg" size="64" autofocus />
     </form>
 </body>
 </html>
