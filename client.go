@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -40,6 +39,25 @@ type Client struct {
 	send chan []byte
 }
 
+func (c *Client) writeMessage(msgType int, message []byte) error {
+	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	w, err := c.conn.NextWriter(msgType)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	w.Write(message)
+
+	// Add queued chat messages to the current WebSocket message.
+	n := len(c.send)
+	for i := 0; i < n; i++ {
+		w.Write(newline)
+		w.Write(<-c.send)
+	}
+	return nil
+}
+
 // hub -> websocket
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
@@ -50,31 +68,15 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				// The hub closed the channel.
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			if !ok { // The hub closed the channel.
+				c.writeMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-
-			w, err := c.conn.NextWriter(websocket.TextMessage)
+			err := c.writeMessage(websocket.TextMessage, message)
 			if err != nil {
 				return
 			}
-			w.Write(message)
-
-			// Add queued chat messages to the current websocket message.
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-c.send)
-			}
-
-			if err := w.Close(); err != nil {
-				return
-			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -83,7 +85,7 @@ func (c *Client) writePump() {
 }
 
 // websocket -> hub
-func (c *Client) readPump() {
+func (c *Client) readPump(handler func(msg Message, c *Client)) {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -92,49 +94,19 @@ func (c *Client) readPump() {
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		messageType, message, err := c.conn.ReadMessage()
+		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			log.Printf("WebSocket read error: %v", err)
 			break
 		}
-		if messageType == websocket.BinaryMessage {
-			log.Println("Received a binary message")
-		}
-
-		log.Printf("Received raw message: %s", message) // Debug raw bytes before parsing
-
 		var msg Message
 		if err := json.Unmarshal(message, &msg); err != nil {
 			log.Printf("Error parsing message: %v", err)
 			continue
 		}
-		log.Printf("Received text: %+v", msg)
+		log.Printf("Received raw message: %s", message)
+		log.Printf("Received unmarshaled: %+v", msg)
 
-		switch msg.Type {
-		case "chat":
-			handleTextMessage(msg, c)
-		case "vote":
-			handleVoteMessage(msg, c)
-		case "file":
-			handleFileMessage(msg, c)
-		case "bin":
-			handleBinaryFileMessage(message, c)
-		default:
-			log.Printf("unknown message type: %s", msg.Type)
-		}
+		handler(msg, c)
 	}
-}
-
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
-	client.hub.register <- client
-
-	// Allow collection of memory referenced by the caller
-	go client.writePump()
-	go client.readPump()
 }

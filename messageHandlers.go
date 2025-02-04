@@ -7,12 +7,16 @@ import (
 )
 
 func handleTextMessage(msg Message, c *Client) {
-	data, err := json.Marshal(msg) // ✅ Serialize full message
+	if msg.Type != "chat" {
+		log.Printf("Wrong message type: chat != %v", msg.Type)
+		return
+	}
+	data, err := json.Marshal(msg)
 	if err != nil {
 		log.Printf("Error marshaling message: %v", err)
 		return
 	}
-	c.hub.broadcast <- data // ✅ Send full JSON message
+	c.hub.broadcast <- data
 }
 
 func handleVoteMessage(msg Message, c *Client) {
