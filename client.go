@@ -85,7 +85,7 @@ func (c *Client) writePump() {
 }
 
 // websocket -> hub
-func (c *Client) readPump(handler func(msg Message, c *Client)) {
+func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -109,6 +109,6 @@ func (c *Client) readPump(handler func(msg Message, c *Client)) {
 		log.Printf("Received raw message: %s", message)
 		log.Printf("Received unmarshaled: %+v", msg)
 
-		handler(msg, c)
+		handleMessage(msg, c)
 	}
 }

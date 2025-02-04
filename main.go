@@ -46,15 +46,15 @@ func main() {
 	}
 
 	http.HandleFunc("/", serveHome)
-	go runService(localIP+chatPort, "chat", chatHub, handleTextMessage)
-	go runService(localIP+votePort, "vote", voteHub, handleVoteMessage)
-	go runService(localIP+filePort, "file", fileHub, handleFileMessage)
+	go runService(localIP+chatPort, "chat", chatHub)
+	go runService(localIP+votePort, "vote", voteHub)
+	go runService(localIP+filePort, "file", fileHub)
 	// go runService(localIP+drawPort, "draw", drawHub)
 
 	waitForQuit()
 }
 
-func runService(address, endpoint string, hub *Hub, handler func(msg Message, c *Client)) {
+func runService(address, endpoint string, hub *Hub) {
 	log.Println("Starting " + endpoint + " on " + address)
 
 	mux := http.NewServeMux()
@@ -63,7 +63,7 @@ func runService(address, endpoint string, hub *Hub, handler func(msg Message, c 
 	})
 	mux.Handle("/pages/", http.StripPrefix("/pages/", http.FileServer(http.Dir("./pages"))))
 	mux.HandleFunc("/ws/"+endpoint, func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r, handler)
+		serveWs(hub, w, r)
 	})
 
 	server := &http.Server{
@@ -103,7 +103,7 @@ func waitForQuit() {
 	}
 }
 
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request, handler func(msg Message, c *Client)) {
+func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -114,5 +114,5 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request, handler func(msg 
 
 	// Allow collection of memory referenced by the caller
 	go client.writePump()
-	go client.readPump(handler)
+	go client.readPump()
 }
