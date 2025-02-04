@@ -8,16 +8,16 @@ import (
 )
 
 type Message struct {
-	Type     string            `json:"type"`     // e.g., "chat", "vote", "file"
-	Payload  json.RawMessage   `json:"payload"`  // the actual message content
+	Type     string            `json:"type"`     // "chat", "vote", "file" ...
+	Payload  json.RawMessage   `json:"payload"`  // The actual message content
 	Metadata map[string]string `json:"metadata"` // Extra info (e.g., filename)
 }
 
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
+	writeWait      = 5 * time.Minute
+	pongWait       = 1 * time.Minute
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 512
+	maxMessageSize = 1024
 )
 
 var (

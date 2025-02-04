@@ -1,6 +1,7 @@
 var conn;
 var msg = document.getElementById("msg");
 var log = document.getElementById("log");
+const username = prompt("Enter username:");
 
 function appendLog(item) {
     var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
@@ -19,7 +20,7 @@ document.getElementById("form").onsubmit = function(event) {
     let message = {
         type: "chat",
         payload: msg.value,
-        metadata: {},
+        metadata: { username },
     };
 
     conn.send(JSON.stringify(message));
@@ -36,12 +37,13 @@ if (window["WebSocket"]) {
         appendLog(item);
     };
 
-    conn.onmessage = function(evt) {
-        var msg = JSON.parse(evt.data);
+    conn.onmessage = function(e) {
+        var msg = JSON.parse(e.data);
         var item = document.createElement("div");
+        item.className = "message";
 
         if (msg.type == "chat") {
-            item.innerText = "Chat: " + msg.payload;
+            item.innerText = msg.metadata["username"] + ": " + msg.payload;
         } else {
             item.innerText = "Wrong message type: chat != " + msg.type;
         }
