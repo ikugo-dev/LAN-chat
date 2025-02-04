@@ -1,5 +1,6 @@
 html {
     overflow: hidden;
+    
 }
 
 body {
@@ -8,19 +9,23 @@ body {
     margin: 0;
     width: 100%;
     height: 100%;
-    background: gray;
+    background: #5d8664 ;
 }
 
 #log {
-    background: white;
-    margin: 0;
-    padding: 0.5em 0.5em 0.5em 0.5em;
+    background: #e6d9bc;
+    padding: 0.5em;
     position: absolute;
-    top: 0.5em;
-    left: 0.5em;
-    right: 0.5em;
-    bottom: 3em;
+    inset: 0.5em 0.5em 3.5em 0.5em;
     overflow: auto;
+}
+.message {
+    background: white;
+    margin-top: 4px;
+    border: 2px solid grey;
+}
+.message > .user {
+    font-weight: bold;
 }
 
 #form {
@@ -28,7 +33,16 @@ body {
     margin: 0;
     position: absolute;
     bottom: 1em;
-    left: 0px;
     width: 100%;
-    overflow: hidden;
 }
+#form > #msg {
+    background: white;
+    height: 2em
+    width: 90%;
+    overflow: hidden;
+    border-bottom: solid;
+}
+/* #form :hover { */
+/* } */
+/* #form :focus { */
+/* } */

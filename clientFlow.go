@@ -74,8 +74,8 @@ func (c *Client) readPump() { // Receives data
 			log.Printf("Error parsing message: %v", err)
 			continue
 		}
-		log.Printf("Received raw message: %s", message)
-		log.Printf("Received unmarshaled: %+v", msg)
+		// log.Printf("Received raw message: %s", message)
+		// log.Printf("Received unmarshaled: %+v", msg)
 
 		c.hub.broadcast <- message
 	}
