@@ -100,7 +100,9 @@ func (c *Client) readPump(handler func(msg Message, c *Client)) {
 			break
 		}
 		var msg Message
-		if err := json.Unmarshal(message, &msg); err != nil {
+
+		err = json.Unmarshal(message, &msg)
+		if err != nil {
 			log.Printf("Error parsing message: %v", err)
 			continue
 		}

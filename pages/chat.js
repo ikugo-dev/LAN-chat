@@ -19,7 +19,7 @@ document.getElementById("form").onsubmit = function(event) {
     let message = {
         type: "chat",
         payload: msg.value,
-        metadata: "random ip value",
+        metadata: {},
     };
 
     conn.send(JSON.stringify(message));

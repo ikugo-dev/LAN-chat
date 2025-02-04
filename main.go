@@ -40,7 +40,10 @@ func main() {
 	go voteHub.run()
 	go fileHub.run()
 
-	var localIP = getLocalIP()
+	var localIP, ok = getLocalIP()
+	if !ok {
+		return
+	}
 
 	http.HandleFunc("/", serveHome)
 	go runService(localIP+chatPort, "chat", chatHub, handleTextMessage)
@@ -58,6 +61,7 @@ func runService(address, endpoint string, hub *Hub, handler func(msg Message, c 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./pages/"+endpoint+".html")
 	})
+	mux.Handle("/pages/", http.StripPrefix("/pages/", http.FileServer(http.Dir("./pages"))))
 	mux.HandleFunc("/ws/"+endpoint, func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r, handler)
 	})
@@ -73,19 +77,19 @@ func runService(address, endpoint string, hub *Hub, handler func(msg Message, c 
 	}
 }
 
-func getLocalIP() string {
+func getLocalIP() (ip string, ok bool) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return "Unknown IP"
+		return "Unknown IP", false
 	}
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
+				return ipnet.IP.String(), true
 			}
 		}
 	}
-	return "Unknown IP"
+	return "Unknown IP", false
 }
 
 func waitForQuit() {
