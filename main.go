@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"log"
 	"net"
-	"net/http"
 	"os"
 )
 
 const (
+	homePort = "8080"
 	chatPort = "8081"
 	votePort = "8082"
 	filePort = "8083"
@@ -30,7 +30,7 @@ func main() {
 		return
 	}
 
-	http.HandleFunc("/", serveHome)
+	go runLandingPage(localIP+":"+homePort, localIP)
 	go runService(localIP+":"+chatPort, "chat", chatHub)
 	go runService(localIP+":"+votePort, "vote", voteHub)
 	go runService(localIP+":"+filePort, "file", fileHub)

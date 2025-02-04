@@ -5,27 +5,46 @@ import (
 	"net/http"
 )
 
-func runService(address, endpoint string, hub *Hub) {
-	log.Println("Starting " + endpoint + " on " + address)
-
+func basePage(address, service string, specificFunctionaliy func(mux *http.ServeMux)) {
+	log.Println("Starting " + service + " on " + address)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./pages/"+endpoint+".html")
-	})
-	mux.Handle("/pages/", http.StripPrefix("/pages/", http.FileServer(http.Dir("./pages"))))
-	mux.HandleFunc("/ws/"+endpoint, func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
-	})
+
+	specificFunctionaliy(mux) // Extracted the logic of different services
 
 	server := &http.Server{
 		Addr:    address,
 		Handler: mux,
 	}
-
 	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+func runService(address, endpoint string, hub *Hub) {
+	specificFunctionality := func(mux *http.ServeMux) {
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, "./pages/"+endpoint+".html")
+		})
+		mux.Handle("/pages/", http.StripPrefix("/pages/", http.FileServer(http.Dir("./pages"))))
+		mux.HandleFunc("/ws/"+endpoint, func(w http.ResponseWriter, r *http.Request) {
+			serveWs(hub, w, r)
+		})
+	}
+	basePage(address, endpoint, specificFunctionality)
+
+}
+
+func runLandingPage(address, localIP string) {
+	specificFunctionality := func(mux *http.ServeMux) {
+		fileServer := http.FileServer(http.Dir("./pages"))
+		mux.Handle("/", fileServer)
+		mux.HandleFunc("/ip", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte(localIP))
+		})
+	}
+	basePage(address, "landing page", specificFunctionality)
 }
 
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -40,17 +59,4 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// Allow collection of memory referenced by the caller
 	go client.writePump()
 	go client.readPump()
-}
-
-func serveHome(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.URL)
-	if r.URL.Path != "/" {
-		http.Error(w, "Use port numbers for navigation, not path", http.StatusNotFound)
-		return
-	}
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed, you can only GET", http.StatusMethodNotAllowed)
-		return
-	}
-	http.ServeFile(w, r, "./pages/home.html")
 }
