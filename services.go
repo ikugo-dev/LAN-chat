@@ -15,7 +15,7 @@ func basePage(address, service string, specificFunctionaliy func(mux *http.Serve
 		Addr:    address,
 		Handler: mux,
 	}
-	err := server.ListenAndServe()
+	err := server.ListenAndServeTLS("cert.pem", "key.pem")
 	if err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

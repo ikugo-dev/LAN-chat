@@ -68,7 +68,6 @@ func (c *Client) readPump() { // Receives data
 			break
 		}
 		var msg Message
-
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
 			log.Printf("Error parsing message: %v", err)

@@ -32,7 +32,7 @@ document.getElementById("form").onsubmit = function(event) {
 };
 
 if (window["WebSocket"]) {
-    conn = new WebSocket("ws://" + document.location.host + "/ws/chat");
+    conn = new WebSocket("wss://" + document.location.host + "/ws/chat");
 
     conn.onclose = function() {
         var item = document.createElement("h2");
