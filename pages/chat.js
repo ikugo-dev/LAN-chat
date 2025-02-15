@@ -1,7 +1,7 @@
 window.serviceName = "chat";
 window.createMessage = function(inputText) {
     let message = {
-        type: "chat",
+        type: window.serviceName,
         payload: inputText,
     };
     return message;
