@@ -6,7 +6,7 @@ import (
 )
 
 func basePage(address, service string, specificFunctionaliy func(mux *http.ServeMux)) {
-	log.Println("Starting " + service + " on " + address)
+	log.Println("Starting " + service + " on https://" + address)
 	mux := http.NewServeMux()
 
 	specificFunctionaliy(mux) // Extracted the logic of different services
@@ -32,7 +32,6 @@ func runService(address, endpoint string, hub *Hub) {
 		})
 	}
 	basePage(address, endpoint, specificFunctionality)
-
 }
 
 func runLandingPage(address, localIP string) {

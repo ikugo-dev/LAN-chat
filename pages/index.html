@@ -26,10 +26,10 @@
         fetch("/ip")
             .then(response => response.text())
             .then(ip => {
-                document.getElementById("chat-link").href = `http://${ip}:8081`;
-                document.getElementById("vote-link").href = `http://${ip}:8082`;
-                document.getElementById("file-link").href = `http://${ip}:8083`;
-                document.getElementById("draw-link").href = `http://${ip}:8084`;
+                document.getElementById("chat-link").href = `https://${ip}:8081`;
+                document.getElementById("vote-link").href = `https://${ip}:8082`;
+                document.getElementById("file-link").href = `https://${ip}:8083`;
+                document.getElementById("draw-link").href = `https://${ip}:8084`;
             })
             .catch(error => console.error("Failed to fetch IP:", error));
     </script>
